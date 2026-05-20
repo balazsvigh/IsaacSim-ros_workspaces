@@ -4,98 +4,107 @@ FROM ${BASE_IMAGE}
 ENV ROS_DISTRO=jazzy
 ENV ROS_ROOT=jazzy_ws
 ENV ROS_PYTHON_VERSION=3
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /workspace
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        git \
-		cmake \
-		build-essential \
-		curl \
-		wget \
-		gnupg2 \
-		lsb-release
-
-
-# Upgrade installed packages
-RUN apt update && apt upgrade -y && apt clean
-
-# Install Python3.11
-RUN apt update && \
-    apt install --no-install-recommends -y build-essential software-properties-common && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt install --no-install-recommends -y python3.11 python3.11-dev python3.11-distutils python3.11-venv
-
-# Setting up locale stuff
-RUN apt update && apt install locales
-
-RUN locale-gen en_US en_US.UTF-8 && \
+# ============================================================
+# Base tools
+# ============================================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    git-lfs \
+    cmake \
+    build-essential \
+    curl \
+    wget \
+    gnupg2 \
+    lsb-release \
+    software-properties-common \
+    ca-certificates \
+    locales && \
+    locale-gen en_US en_US.UTF-8 && \
     update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 && \
-    export LANG=en_US.UTF-8
+    apt clean
 
-# Set default Python3 to Python3.11
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 
-# Pip install stuff
+# ============================================================
+# Python 3.11
+# ============================================================
+RUN add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt update && \
+    apt install --no-install-recommends -y \
+        python3.11 \
+        python3.11-dev \
+        python3.11-distutils \
+        python3.11-venv && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    apt clean
+
 RUN curl -s https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python3.11 get-pip.py --force-reinstall && \
     rm get-pip.py
 
-RUN wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc && apt-key add ros.asc
-RUN sh -c 'echo "deb [arch=$(dpkg --print-architecture)] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2-latest.list'
+# ============================================================
+# ROS 2 apt source
+# ============================================================
+RUN wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc && \
+    apt-key add ros.asc && \
+    sh -c 'echo "deb [arch=$(dpkg --print-architecture)] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2-latest.list'
 
-# Additional dependencies needed for rosidl_generator_c
-RUN apt update && apt install -y \
+# ============================================================
+# System dependencies
+# ============================================================
+RUN apt update && apt install -y --no-install-recommends \
     pkg-config \
+    cmake-extras \
     python3-yaml \
-    cmake-extras
-
-# Install Boost libraries needed for OMPL
-RUN apt update && apt install -y \
-    libboost-all-dev \
-    libboost-dev \
-    libboost-filesystem-dev \
-    libboost-program-options-dev \
-    libboost-system-dev \
-    libboost-thread-dev \
-    libboost-serialization-dev \
-    libboost-date-time-dev \
-    libboost-regex-dev \
-    libboost-python-dev \
-    libfmt-dev
-
-# Install dependencies for geometric_shapes and other packages
-RUN apt update && apt install -y \
+    python3-pip \
+    python3-pytest-cov \
+    python3-rosinstall-generator \
+    python3-empy \
+    ros-dev-tools \
+    libpython3-dev \
+    libeigen3-dev \
+    libopencv-dev \
+    python3-opencv \
+    libssl-dev \
+    liblttng-ust-dev \
+    libasio-dev \
+    libtinyxml2-dev \
+    libcunit1-dev \
+    libacl1-dev \
+    libbullet-dev \
     libqhull-dev \
     libassimp-dev \
     liboctomap-dev \
     libconsole-bridge-dev \
-    libfcl-dev
-
-# Install Eigen3 needed for OMPL and MoveIt
-RUN apt update && apt install -y \
-    libeigen3-dev
-
-# Install X11 and graphics dependencies needed for OGRE (RViz)
-RUN apt update && apt install -y \
+    libfcl-dev \
+    libyaml-cpp-dev \
+    libfmt-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libzzip-dev \
     libx11-dev \
     libxaw7-dev \
     libxrandr-dev \
+    libxcursor-dev \
+    libxinerama-dev \
+    libxi-dev \
+    libxxf86vm-dev \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
     libglew-dev \
     libgles2-mesa-dev \
     libopengl-dev \
+    libgl1-mesa-dri \
+    libglx-mesa0 \
+    freeglut3-dev \
     libfreetype-dev \
     libfreetype6-dev \
     libfontconfig1-dev \
-    libfmt-dev
-
-# Install Qt5 and additional dependencies for RViz
-RUN apt update && apt install -y \
     qtbase5-dev \
     qtchooser \
     qt5-qmake \
@@ -104,120 +113,197 @@ RUN apt update && apt install -y \
     libqt5gui5 \
     libqt5opengl5 \
     libqt5widgets5 \
-    libxcursor-dev \
-    libxinerama-dev \
-    libxi-dev \
-    libyaml-cpp-dev \
-    libassimp-dev \
-    libzzip-dev \
-    freeglut3-dev \
-    libogre-1.9-dev \
-    libpng-dev \
-    libjpeg-dev \
-    python3-pyqt5.qtwebengine
+    x11-apps \
+    mesa-utils \
+    gstreamer1.0-tools \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev && \
+    apt clean
 
-RUN pip3 install setuptools==70.0.0
+# ============================================================
+# Python packages before Boost
+# Keep this minimal, matching the working Humble pattern.
+# ============================================================
+RUN python3.11 -m pip install --upgrade pip setuptools==70.0.0
+RUN python3.11 -m pip install empy==3.3.4 lark colcon-common-extensions
 
-RUN apt update && apt install -y \
-  python3-pip \
-  python3-pytest-cov \
-  python3-rosinstall-generator \
-  ros-dev-tools \
-  libbullet-dev \
-  libasio-dev \
-  libtinyxml2-dev \
-  libcunit1-dev \
-  libacl1-dev \
-  python3-empy \
-  libpython3-dev \
-  liblttng-ust-dev
+# ============================================================
+# Boost 1.78 for Python 3.11
+# ============================================================
+RUN cd /workspace && \
+    wget https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.tar.bz2/download -O boost_1_78_0.tar.bz2 && \
+    tar xf boost_1_78_0.tar.bz2 && \
+    cd boost_1_78_0 && \
+    ./bootstrap.sh --with-python=/usr/bin/python3.11 --prefix=/opt/boost_3_11 && \
+    ./b2 install threading=multi variant=release link=shared python=3.11 && \
+    cd .. && \
+    rm -rf boost_1_78_0 boost_1_78_0.tar.bz2
 
-# Install the correct version of empy that is compatible with ROS 2 jazzy
-# Uninstall any existing empy first, then install version 3.3.4 specifically
-RUN python3.11 -m pip uninstall -y em empy || true
-RUN python3.11 -m pip install empy==3.3.4
+ENV BOOST_ROOT=/opt/boost_3_11
+ENV CMAKE_PREFIX_PATH=/opt/boost_3_11:$CMAKE_PREFIX_PATH
+ENV LD_LIBRARY_PATH=/opt/boost_3_11/lib:$LD_LIBRARY_PATH
+ENV LIBRARY_PATH=/opt/boost_3_11/lib:$LIBRARY_PATH
+ENV CPLUS_INCLUDE_PATH=/opt/boost_3_11/include:$CPLUS_INCLUDE_PATH
+ENV PKG_CONFIG_PATH=/opt/boost_3_11/lib/pkgconfig:$PKG_CONFIG_PATH
+ENV Boost_NO_SYSTEM_PATHS=ON
 
-RUN python3 -m pip install -U --ignore-installed \
-  argcomplete \
-  flake8-blind-except \
-  flake8-builtins \
-  flake8-class-newline \
-  flake8-comprehensions \
-  flake8-deprecated \
-  flake8-docstrings \
-  flake8-import-order \
-  flake8-quotes \
-  pytest-repeat \
-  pytest-rerunfailures \
-  pytest \
-  lark
+# ============================================================
+# Python packages after Boost
+# ============================================================
+RUN python3.11 -m pip uninstall numpy -y || true
+RUN python3.11 -m pip install --upgrade pip
+RUN python3.11 -m pip install numpy pybind11 PyYAML rospkg
+RUN python3.11 -m pip install "pybind11[global]"
 
-RUN python3.11 -m pip uninstall numpy -y
-RUN python3.11 -m pip install --ignore-installed --upgrade pip
-RUN python3.11 -m pip install --ignore-installed numpy pybind11 PyYAML
-
-# Create symlinks for Python3.11 headers where CMake can find them
 RUN ln -sf /usr/include/python3.11 /usr/include/python3
 
-# Fix paths for pybind11
-RUN python3.11 -m pip install --ignore-installed "pybind11[global]"
-
-RUN mkdir -p ${ROS_ROOT}/src && \
-    cd ${ROS_ROOT} && \
-    rosinstall_generator --deps --rosdistro ${ROS_DISTRO} rosidl_runtime_c rcutils rcl rmw tf2 tf2_msgs common_interfaces geometry_msgs nav_msgs std_msgs rosgraph_msgs sensor_msgs vision_msgs rclpy ros2topic ros2pkg ros2doctor ros2run ros2node ros_environment ackermann_msgs example_interfaces > ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall && \
-    cat ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall && \
-    vcs import src < ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall
-
-# Patch rclpy to ensure it builds with Python 3.11 - find the correct path first
-RUN find /workspace/${ROS_ROOT}/src -name rclpy -type d | xargs -I{} /bin/bash -c 'if [ -f {}/CMakeLists.txt ]; then \
-    echo "Patching {}/CMakeLists.txt"; \
-    sed -i "s/include_directories(\${PYTHON_INCLUDE_DIRS})/include_directories(\/usr\/include\/python3.11)/" {}/CMakeLists.txt; \
-    sed -i "s/\${PYTHON_LIBRARY}/python3.11/" {}/CMakeLists.txt; \
-    fi'
-
-RUN rosdep init && rosdep update
-
-# Make sure PYTHONPATH includes the correct site-packages
-ENV PYTHONPATH=/usr/local/lib/python3.11/dist-packages
-
-# Use logging to help debug build issues
-RUN cd ${ROS_ROOT} && colcon build --cmake-args \
-    "-DPython3_EXECUTABLE=/usr/bin/python3.11" \
-    "-DPYTHON_EXECUTABLE=/usr/bin/python3.11" \
-    "-DPYTHON_INCLUDE_DIR=/usr/include/python3.11" \
-    "-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so" \
-    --merge-install
-
-# Need these to maintain compatibility on non 20.04 systems
-RUN cp /usr/lib/x86_64-linux-gnu/libtinyxml2.so* /workspace/jazzy_ws/install/lib/ || true
-RUN cp /usr/lib/x86_64-linux-gnu/libssl.so* /workspace/jazzy_ws/install/lib/ || true
-RUN cp /usr/lib/x86_64-linux-gnu/libcrypto.so* /workspace/jazzy_ws/install/lib/ || true
-
-# Next, build the additional workspace 
-RUN mkdir -p /workspace/build_ws/src
-
-
-# Copy the source files only - don't copy any build artifacts
-COPY jazzy_ws/src /workspace/build_ws/src
-
-# Removing MoveIt packages from the internal ROS Python 3.11 library build as it uses standard interfaces already built above.
-# This is to ensure that the internal build is as minimal as possible. 
-# For the user facing MoveIt interface workflow, this package should be built with the rest of the workspace uisng the external ROS installation.
-RUN rm -rf /workspace/build_ws/src/moveit
-
-# Make sure we're in the right directory
-WORKDIR /workspace
-
-# Set up environment variables for Python 3.11
-ENV PYTHONPATH=/usr/local/lib/python3.11/dist-packages
+ENV PYTHONPATH=/usr/local/lib/python3.11/dist-packages:/usr/local/lib/python3.11/site-packages
 ENV PYTHON_EXECUTABLE=/usr/bin/python3.11
 ENV Python3_EXECUTABLE=/usr/bin/python3.11
 ENV PYTHON_INCLUDE_DIR=/usr/include/python3.11
 ENV PYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so
 
-# Build the workspace with Python 3.11
-RUN /bin/bash -c "source ${ROS_ROOT}/install/setup.sh && cd build_ws && colcon build --cmake-args \
-    '-DPython3_EXECUTABLE=/usr/bin/python3.11' \
-    '-DPYTHON_EXECUTABLE=/usr/bin/python3.11' \
-    '-DPYTHON_INCLUDE_DIR=/usr/include/python3.11' \
-    '-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so'"
+# Remove system NumPy so Python 3.11 does not import Ubuntu's Python 3.12 NumPy.
+RUN apt remove -y python3-numpy || true
+RUN python3.11 -m pip install --force-reinstall "numpy<2"
+RUN python3.11 -c "import numpy; print(numpy.__file__); print(numpy.get_include())"
+
+# ============================================================
+# ROS 2 Jazzy source workspace
+# ============================================================
+RUN mkdir -p ${ROS_ROOT}/src && \
+    cd ${ROS_ROOT} && \
+    rosinstall_generator --deps --rosdistro ${ROS_DISTRO} \
+        rosidl_runtime_c \
+        rcutils \
+        rcl \
+        rmw \
+        tf2 \
+        tf2_msgs \
+        common_interfaces \
+        geometry_msgs \
+        nav_msgs \
+        std_msgs \
+        rosgraph_msgs \
+        sensor_msgs \
+        vision_msgs \
+        rclpy \
+        ros2topic \
+        ros2pkg \
+        ros2doctor \
+        ros2run \
+        ros2node \
+        ros2launch \
+        ros_environment \
+        ackermann_msgs \
+        example_interfaces \
+        rclcpp \
+        cv_bridge \
+        > ros2.${ROS_DISTRO}.rosinstall && \
+    vcs import src < ros2.${ROS_DISTRO}.rosinstall
+
+# Patch rclpy for Python 3.11
+RUN find /workspace/${ROS_ROOT}/src -name rclpy -type d | \
+    xargs -I{} /bin/bash -c 'if [ -f {}/CMakeLists.txt ]; then \
+        sed -i "s/include_directories(\${PYTHON_INCLUDE_DIRS})/include_directories(\/usr\/include\/python3.11)/" {}/CMakeLists.txt; \
+        sed -i "s/\${PYTHON_LIBRARY}/python3.11/" {}/CMakeLists.txt; \
+    fi'
+
+RUN rosdep init && rosdep update
+
+# ============================================================
+# Build ROS 2 Jazzy with Python 3.11
+# ============================================================
+RUN cd ${ROS_ROOT} && \
+    NUMPY_INCLUDE=$(python3.11 -c "import numpy; print(numpy.get_include())") && \
+    echo "NumPy include: ${NUMPY_INCLUDE}" && \
+    colcon build --merge-install --cmake-args \
+        "-DPython3_EXECUTABLE=/usr/bin/python3.11" \
+        "-DPYTHON_EXECUTABLE=/usr/bin/python3.11" \
+        "-DPYTHON_INCLUDE_DIR=/usr/include/python3.11" \
+        "-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so" \
+        "-DPython3_NumPy_INCLUDE_DIRS=${NUMPY_INCLUDE}" \
+        "-DPython3_FIND_STRATEGY=LOCATION" \
+        -DBOOST_ROOT=/opt/boost_3_11
+
+# ============================================================
+# Pangolin v0.6 patched for Ubuntu 24.04
+# ============================================================
+RUN cd /workspace && \
+    git clone https://github.com/balazsvigh/Pangolin_v06_ubuntu24.git && \
+    cd Pangolin_v06_ubuntu24 && \
+    mkdir build && \
+    cd build && \
+    cmake .. \
+        -DBUILD_PANGOLIN_PYTHON=OFF \
+        -DBUILD_PYTHON=OFF \
+        -DBUILD_PYPANGOLIN_MODULE=OFF \
+        -DBUILD_PANGOLIN_FFMPEG=OFF \
+        -DBUILD_FFMPEG=OFF \
+        -DBUILD_EXAMPLES=OFF \
+        -DBUILD_TOOLS=OFF && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# ============================================================
+# ORB_SLAM3
+# ============================================================
+RUN test -f /opt/boost_3_11/include/boost/serialization/serialization.hpp && \
+    test -f /usr/include/openssl/md5.h && \
+    git lfs install && \
+    cd /workspace && \
+    git clone https://github.com/balazsvigh/ORB_SLAM3_CPP14.git && \
+    cd ORB_SLAM3_CPP14 && \
+    git lfs pull && \
+    chmod +x build.sh && \
+    sed -i 's/make -j$(nproc)/make VERBOSE=1 -j1/g' build.sh && \
+    sed -i 's/make -j[0-9]\+/make VERBOSE=1 -j1/g' build.sh && \
+    sed -i 's/make -j/make VERBOSE=1 -j1/g' build.sh && \
+    find . -name "CMakeLists.txt" -exec sed -i 's/-Werror//g' {} \; && \
+    find . -name "CMakeLists.txt" -exec sed -i 's/-march=native//g' {} \; && \
+    export CXXFLAGS="-O2 -Wno-error -Wno-array-bounds -Wno-stringop-overread -Wno-maybe-uninitialized -Wno-error=deprecated -Wno-error=deprecated-declarations -DEIGEN_DONT_VECTORIZE -DEIGEN_MAX_ALIGN_BYTES=0 -mno-avx512f" && \
+    export CFLAGS="-O2 -Wno-error -Wno-array-bounds -Wno-stringop-overread -Wno-maybe-uninitialized -mno-avx512f" && \
+    ./build.sh
+
+ENV ORB_SLAM3_DIR=/workspace/ORB_SLAM3_CPP14
+ENV LD_LIBRARY_PATH=/workspace/ORB_SLAM3_CPP14/lib:/opt/boost_3_11/lib:/usr/local/lib:$LD_LIBRARY_PATH
+
+RUN echo "/workspace/ORB_SLAM3_CPP14/lib" > /etc/ld.so.conf.d/orbslam3.conf && \
+    echo "/opt/boost_3_11/lib" > /etc/ld.so.conf.d/boost_3_11.conf && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
+    ldconfig
+
+# ============================================================
+# GUI runtime defaults
+# Actual DISPLAY must still be passed with docker run.
+# ============================================================
+ENV QT_X11_NO_MITSHM=1
+ENV LIBGL_ALWAYS_INDIRECT=0
+
+# ============================================================
+# User ROS workspace
+# ============================================================
+RUN mkdir -p /workspace/build_ws/src
+COPY jazzy_ws/src /workspace/build_ws/src
+RUN rm -rf /workspace/build_ws/src/moveit || true
+
+WORKDIR /workspace
+
+RUN /bin/bash -c "source /workspace/${ROS_ROOT}/install/setup.bash && \
+    cd /workspace/build_ws && \
+    colcon build --cmake-args \
+        '-DPython3_EXECUTABLE=/usr/bin/python3.11' \
+        '-DPYTHON_EXECUTABLE=/usr/bin/python3.11' \
+        '-DPYTHON_INCLUDE_DIR=/usr/include/python3.11' \
+        '-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so' \
+        -DBOOST_ROOT=/opt/boost_3_11"
+
+WORKDIR /workspace
+
+CMD ["/bin/bash"]
