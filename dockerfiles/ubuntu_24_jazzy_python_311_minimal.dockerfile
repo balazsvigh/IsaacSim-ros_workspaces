@@ -60,6 +60,7 @@ RUN wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc && \
 RUN apt update && apt install -y --no-install-recommends \
     pkg-config \
     cmake-extras \
+    tmux \
     python3-yaml \
     python3-pip \
     python3-pytest-cov \
@@ -265,10 +266,6 @@ RUN test -f /opt/boost_3_11/include/boost/serialization/serialization.hpp && \
     sed -i 's/make -j$(nproc)/make VERBOSE=1 -j1/g' build.sh && \
     sed -i 's/make -j[0-9]\+/make VERBOSE=1 -j1/g' build.sh && \
     sed -i 's/make -j/make VERBOSE=1 -j1/g' build.sh && \
-    find . -name "CMakeLists.txt" -exec sed -i 's/-Werror//g' {} \; && \
-    find . -name "CMakeLists.txt" -exec sed -i 's/-march=native//g' {} \; && \
-    export CXXFLAGS="-O2 -Wno-error -Wno-array-bounds -Wno-stringop-overread -Wno-maybe-uninitialized -Wno-error=deprecated -Wno-error=deprecated-declarations -DEIGEN_DONT_VECTORIZE -DEIGEN_MAX_ALIGN_BYTES=0 -mno-avx512f" && \
-    export CFLAGS="-O2 -Wno-error -Wno-array-bounds -Wno-stringop-overread -Wno-maybe-uninitialized -mno-avx512f" && \
     ./build.sh
 
 ENV ORB_SLAM3_DIR=/workspace/ORB_SLAM3_CPP14
@@ -286,23 +283,7 @@ RUN echo "/workspace/ORB_SLAM3_CPP14/lib" > /etc/ld.so.conf.d/orbslam3.conf && \
 ENV QT_X11_NO_MITSHM=1
 ENV LIBGL_ALWAYS_INDIRECT=0
 
-# ============================================================
-# User ROS workspace
-# ============================================================
 RUN mkdir -p /workspace/build_ws/src
-COPY jazzy_ws/src /workspace/build_ws/src
-RUN rm -rf /workspace/build_ws/src/moveit || true
-
-WORKDIR /workspace
-
-RUN /bin/bash -c "source /workspace/${ROS_ROOT}/install/setup.bash && \
-    cd /workspace/build_ws && \
-    colcon build --cmake-args \
-        '-DPython3_EXECUTABLE=/usr/bin/python3.11' \
-        '-DPYTHON_EXECUTABLE=/usr/bin/python3.11' \
-        '-DPYTHON_INCLUDE_DIR=/usr/include/python3.11' \
-        '-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.11.so' \
-        -DBOOST_ROOT=/opt/boost_3_11"
 
 WORKDIR /workspace
 
